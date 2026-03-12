@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hair Try On Studio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+    <div class="page-shell">
+        <div class="ambient ambient-left"></div>
+        <div class="ambient ambient-right"></div>
+
+        <main class="layout">
+            <section class="hero-panel">
+                <p class="eyebrow">Hair Try On Studio</p>
+                <h1>Design your new look in 3 steps</h1>
+                <p class="hero-copy">
+                   Upload a photo, describe the change, and generate a downloadable preview. The interface is designed to be fast, clear, and easy to use.
+                </p>
+
+                <div class="workflow-steps" aria-label="Pasos para usar la herramienta">
+                    <article id="step-upload" class="step-item is-active" aria-live="polite">
+                        <span class="step-index">1</span>
+                        <div>
+                            <p class="step-title">Upload a photo</p>
+                            <p class="step-copy">Ideal: frontal view and good lighting.</p>
+                        </div>
+                    </article>
+                    <article id="step-prompt" class="step-item" aria-live="polite">
+                        <span class="step-index">2</span>
+                        <div>
+                            <p class="step-title">Write the style</p>
+                            <p class="step-copy">Indicate length, color, and texture.</p>
+                        </div>
+                    </article>
+                    <article id="step-generate" class="step-item" aria-live="polite">
+                        <span class="step-index">3</span>
+                        <div>
+                            <p class="step-title">Generate and download</p>
+                            <p class="step-copy">Compare the original and the result instantly.</p>
+                        </div>
+                    </article>
+                </div>
+            </section>
+
+            <section class="studio-card">
+                <form id="hair-form" class="control-panel">
+                    <div class="field-group">
+                        <label for="image-input" class="field-label">1. Photography</label>
+                        <label for="image-input" id="dropzone" class="dropzone">
+                            <input id="image-input" name="image" type="file" accept="image/*" required>
+                            <span class="dropzone-title">Drag an image or click to upload</span>
+                            <span class="dropzone-copy">Better results with a frontal, clear and well-lit photo.</span>
+                            <span id="file-meta" class="file-meta">No file selected fdd</span>
+                        </label>
+                    </div>
+
+                    <div class="field-group">
+                        <div class="prompt-head">
+                            <label for="prompt-input" class="field-label">2. Desired change</label>
+                            <span id="prompt-counter" class="prompt-counter">0/280</span>
+                        </div>
+                        <textarea
+                            id="prompt-input"
+                            name="prompt"
+                            rows="5"
+                            maxlength="280"
+                            placeholder="Example: straight bob hair, ash brown tone, with soft bangs."
+                            required
+                        ></textarea>
+
+                        <div class="suggestion-row" aria-label="Sugerencias de estilo">
+                            <button type="button" class="prompt-chip" data-prompt="Cabello bob liso, tono castano ceniza, con flequillo suave.">Bob ceniza</button>
+                            <button type="button" class="prompt-chip" data-prompt="Cabello largo ondulado, color miel, con volumen natural.">Ondas miel</button>
+                            <button type="button" class="prompt-chip" data-prompt="Pixie moderno, negro brillante, con textura suave.">Pixie moderno</button>
+                        </div>
+                    </div>
+
+                    <div class="action-row">
+                        <button id="submit-button" type="submit" class="primary-button">Generate result</button>
+                        <button id="clear-button" type="button" class="secondary-button">Clear</button>
+                    </div>
+
+                    <!---- <p class="helper-text">Atajo: usa <kbd>Ctrl</kbd> + <kbd>Enter</kbd> para generar rapido.</p> -->
+                    <p class="helper-text">The result will appear on the right and will also be saved in Inputs.</p>
+                </form>
+
+                <section class="preview-panel" aria-live="polite">
+                    <div class="preview-header">
+                        <div>
+                            <p class="section-kicker">Preview</p>
+                            <h2>Original and Result</h2>
+                        </div>
+                        <span id="status-pill" class="status-pill">Waiting for image</span>
+                    </div>
+
+                    <div class="preview-grid">
+                        <article class="image-card">
+                            <div class="image-card-header">
+                                <span>Original picture</span>
+                            </div>
+                            <div class="image-frame">
+                                <img id="original-preview" alt="Vista previa de la imagen cargada">
+                                <div id="original-empty" class="empty-state">Your image will be seen here.</div>
+                            </div>
+                        </article>
+
+                        <article class="image-card result-card">
+                            <div class="image-card-header">
+                                <span>Generated result</span>
+                                <a id="download-link" class="download-link hidden" download="hair-result.png">Download</a>
+                            </div>
+                            <div class="image-frame">
+                                <img id="result-preview" alt="Resultado generado">
+                                <div id="result-empty" class="empty-state emphasized">Generate a proposal to view here.</div>
+                                <div id="loading-state" class="loading-state hidden">
+                                    <span class="loading-orb"></span>
+                                    <p>Processing image and applying the new style...</p>
+                                </div>
+                            </div>
+                        </article>
+                    </div>
+
+                    <p id="response-message" class="response-message"></p>
+                </section>
+            </section>
+        </main>
+    </div>
+
+    <script src="/assets/app.js" defer></script>
+</body>
+</html>
