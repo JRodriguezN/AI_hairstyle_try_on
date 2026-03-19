@@ -8,8 +8,6 @@ import cv2
 import numpy as np
 
 hair_try__in_route = APIRouter()
-root_dir = Path(__file__).resolve().parents[2]
-output_dir = root_dir / "Inputs"
 
 def resize_for_model(image_bytes, max_size=(1024, 1024)):
     np_arr = np.frombuffer(image_bytes, np.uint8)
@@ -47,17 +45,11 @@ async def change_hair_style(image: UploadFile = File ( ... ), prompt: str = Form
     if not success:
         raise HTTPException(status_code=500, detail="No se pudo codificar la imagen generada.")
 
-    output_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_path = output_dir / f"hair_result_{timestamp}.png"
-    output_path.write_bytes(buffer.tobytes())
-
     return {
         "status_code": 200,
         "message": "Imagen generada correctamente",
         "image_base64": base64.b64encode(buffer).decode("utf-8"),
         "image_mime_type": "image/png",
-        "saved_to": str(output_path.relative_to(root_dir)).replace("\\", "/")
     }
 
 
