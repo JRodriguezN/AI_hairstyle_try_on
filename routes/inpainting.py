@@ -41,7 +41,14 @@ async def change_hair_style(image: UploadFile = File ( ... ), prompt: str = Form
         raise HTTPException(status_code=400, detail="Debes escribir un prompt con el cambio deseado.")
 
     resized_image = resize_for_model(image_bytes)
-    result = generate_new_style(resized_image, normalized_prompt)
+    try:
+        result = generate_new_style(resized_image, normalized_prompt)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=502, detail=f"Error del servicio de IA: {e}")
 
     success, buffer = cv2.imencode(".png", result)
     if not success:

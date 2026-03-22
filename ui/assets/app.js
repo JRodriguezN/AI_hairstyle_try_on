@@ -255,7 +255,10 @@ form.addEventListener("submit", async (event) => {
 
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) {
-            throw new Error(payload.detail ?? "No fue posible generar el resultado.");
+            const detail = Array.isArray(payload.detail)
+                ? payload.detail.map((d) => d.msg ?? String(d)).join(" ")
+                : payload.detail ?? "No fue posible generar el resultado.";
+            throw new Error(detail);
         }
 
         if (!payload.image_mime_type || !payload.image_base64) {

@@ -1,24 +1,54 @@
 import mediapipe as mp
-from mediapipe.tasks.python import vision
+from mediapipe.tasks.python import vision, BaseOptions
 from mediapipe.tasks.python.vision.core.image import Image
-from mediapipe.tasks.python import BaseOptions
 import cv2
 import numpy as np
+from pathlib import Path
 
-#Initialize segmenter
-model_path="./Models/hair_segmenter.tflite"
+# Ruta del modelo relativa al directorio del proyecto (independiente del cwd)
+_model_dir = Path(__file__).resolve().parent.parent
+_model_path = _model_dir / "Models" / "hair_segmenter.tflite"
 
-options = vision.ImageSegmenterOptions(
-    base_options = BaseOptions(model_path),
-    running_mode = vision.RunningMode.IMAGE,
-    output_category_mask = True
-)
-segmenter = vision.ImageSegmenter.create_from_options(options)
+_segmenter = None
+
+
+def get_segmenter():
+    """Carga el segmentador de cabello de forma diferida (solo cuando se necesita)."""
+    global _segmenter
+    if _segmenter is None:
+        if not _model_path.exists():
+            from services.model_utils import ensure_hair_segmenter
+            if not ensure_hair_segmenter():
+                raise FileNotFoundError(
+                    "No se pudo descargar el modelo automáticamente. "
+                    "Ejecuta en la terminal: python scripts/download_model.py "
+                    "y vuelve a intentar."
+                )
+        # Cargar modelo como bytes para evitar errores con rutas con caracteres especiales (ej. Estadía en Windows)
+        try:
+            with open(_model_path, "rb") as f:
+                model_bytes = f.read()
+        except OSError as e:
+            raise FileNotFoundError(
+                f"No se pudo leer el modelo en {_model_path}. "
+                "Ejecuta: python scripts/download_model.py"
+            ) from e
+        if len(model_bytes) < 100_000:
+            raise FileNotFoundError("El archivo del modelo está corrupto o incompleto. Elimínalo y ejecuta: python scripts/download_model.py")
+        options = vision.ImageSegmenterOptions(
+            base_options=BaseOptions(model_asset_buffer=model_bytes),
+            running_mode=vision.RunningMode.IMAGE,
+            output_category_mask=True
+        )
+        _segmenter = vision.ImageSegmenter.create_from_options(options)
+    return _segmenter
 
 
 def process_image(image_byte: bytes):
     nparr = np.frombuffer(image_byte, np.uint8)
-    img = cv2.imdecode(nparr,cv2.IMREAD_COLOR)
+    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    if img is None:
+        raise ValueError("No se pudo decodificar la imagen. Verifica que el archivo sea una imagen válida (jpeg, png, webp).")
     
     #Convert color to RGB and to mediaPipe object
     image_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -26,7 +56,9 @@ def process_image(image_byte: bytes):
 
     return image_rgb
 
-def segmenter_hair(image: Image, segmenter):
+def segmenter_hair(image: Image, segmenter=None):
+    if segmenter is None:
+        segmenter = get_segmenter()
     segmenter_result = segmenter.segment(image)
     
     category_mask =  segmenter_result.category_mask
