@@ -5,7 +5,10 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     libxcb1 \
     libgl1 \
-    libglib2.0-0
+    libglib2.0-0 \
+    libgles2 \
+    libegl1 \
+    && rm -rf /var/lib/apt/lists/*
 
 #Copy the files
 
