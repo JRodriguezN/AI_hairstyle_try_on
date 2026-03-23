@@ -272,7 +272,7 @@ form.addEventListener("submit", async (event) => {
         downloadLink.href = resultUrl;
         downloadLink.classList.remove("hidden");
         setStatus("Resultado listo", "success");
-        responseMessage.textContent = `${payload.message ?? "Resultado generado"}. Archivo guardado en ${payload.saved_to ?? "Inputs"}.`;
+        responseMessage.textContent = `${payload.message ?? "Resultado generado"}.`;
         syncWorkflow();
     } catch (error) {
         loadingState.classList.add("hidden");
