@@ -1,7 +1,9 @@
-from services.segmentation_service import segmenter, process_image, segmenter_hair
+from services.segmentation_service import process_image, segmenter_hair
 import boto3
 import base64, cv2, json, random
 import numpy as np
+from pathlib import Path
+from typing import Optional
 from dotenv import load_dotenv
 
 
@@ -16,30 +18,37 @@ model_id = "arn:aws:bedrock:us-east-1:911701613368:inference-profile/us.stabilit
 #Model for LLM
 ll_model_id= "us.meta.llama3-1-70b-instruct-v1:0"
 
-#User prompt
-#user_prompt="""I want a short haircut that reaches my eyebrows and straight hair styled formally."""
+# Face landmarks para protección precisa del rostro (óvalo facial, no bounding box)
+from services.face_landmarks_service import get_face_oval_mask, get_scalp_mask_for_bald
+
+
+def _apply_face_protection(mask: np.ndarray, image_bytes: bytes) -> np.ndarray:
+    """
+    Elimina de la máscara cualquier píxel que cubra el rostro.
+    Usa FaceLandmarker (óvalo facial preciso) en lugar de bounding box.
+    """
+    face_mask = get_face_oval_mask(image_bytes, padding=0.06)
+    if face_mask is not None:
+        mask = np.where(face_mask > 0, 0, mask).astype(np.uint8)
+    return mask
 
 
 def get_technical_instructions(user_prompt):
     prompt_system ="""
-    You are a technical image editing assistant specialized in hair transformations.
+    You are a technical image editing assistant specialized in photorealistic hair transformations.
     Analyze the user's request carefully and output ONLY a valid JSON object with these keys:
-    - "style": (choose one: "long", "short", "bald", "color")
-    - "refined_prompt": (a precise, natural English description for an image generator.
-    Always describe the hairstyle clearly, e.g. "a person with completely bald head",
-    "a person with long flowing hair", "short cropped hairstyle", "hair dyed bright red").
-    Avoid vague terms or unrealistic combinations.
-    - "negative_prompt": (standard English negative prompt to avoid artifacts:
-    "blurry, distorted, extra limbs, bad anatomy, low quality, unrealistic hair").
-    - "dilation_iterations": (integer 1-2. Use 2 for bald or long hair to ensure mask expansion,
-    1 for color change or short hair).
-    Rules:
-    - Always ensure the hairstyle description matches the chosen style.
-    - For "bald", explicitly state "completely bald head" to avoid partial hair.
-    - For "long", emphasize "long flowing hair" or "extended hairstyle".
-    - For "short", emphasize "short cropped hair".
-    - For "color", describe the hair color change clearly.
-    - Do not invent extra objects, backgrounds, or unrelated features.
+    - "style": (choose one: "long", "short", "bald", "color", "add_hair")
+    - "refined_prompt": (English description for an inpainting model. MANDATORY start: "same face unchanged, photorealistic," then hair description.
+    For LONG hair: "same face unchanged, photorealistic, natural long flowing hair extending to shoulders,
+    realistic hair strands and texture, seamless integration with scalp, natural lighting, like a real photograph".
+    For ADD_HAIR (bald person): "same face unchanged, photorealistic, natural hair growing from scalp,
+    full head of hair, realistic hairline and texture, seamless blend with skin, natural lighting".
+    For other styles: describe hair clearly. NEVER modify face, skin, or facial features.
+    - "negative_prompt": (MANDATORY: "deformed face, distorted face, different face, altered face, asymmetric,
+    blurry, bad anatomy, cartoon, filter, artificial, oversaturated, wig, plastic hair, fake hair, unnatural").
+    - "dilation_iterations": (integer 3-4 for "long" or "add_hair", 2 for bald, 1 for color/short).
+    Use "add_hair" when user wants to ADD hair to a bald person. Use "bald" when user wants to REMOVE hair.
+    Rules: Face must stay EXACTLY the same. Hair must look real, not like a filter or CGI.
     """
     
     formatted_prompt = f"""
@@ -65,9 +74,8 @@ def get_technical_instructions(user_prompt):
             body = request
         )
         
-    except (Exception) as e:
-        print(f"ERROR: Can't invoke '{ll_model_id}'. Reason: {e}")
-        exit(1)
+    except Exception as e:
+        raise RuntimeError(f"No se pudo invocar el modelo LLM '{ll_model_id}': {e}") from e
     
     model_response = json.loads(response.get("body").read())
     response_text = model_response['generation'].strip()
@@ -78,26 +86,68 @@ def get_technical_instructions(user_prompt):
         # Limpieza de emergencia si el modelo añade texto extra
         start = response_text.find('{')
         end = response_text.rfind('}') + 1
+        if start < 0 or end <= start:
+            raise ValueError("El LLM no devolvió un JSON válido.") from None
         return json.loads(response_text[start:end])
 
-def processs_dynamic_mask(mask_np, instructions):
-    mask = np.where(mask_np.squeeze() == 1, 255, 0).astype(np.uint8)
+def _extend_mask_downward_for_long_hair(mask: np.ndarray) -> np.ndarray:
+    """
+    Extiende la máscara de cabello hacia abajo para dar espacio a pelo largo,
+    sin invadir el área de la cara. Simula la zona donde caería el cabello
+    sobre cuello y hombros.
+    """
+    h, w = mask.shape[:2]
+    extended = mask.copy()
     
-    style = instructions['style']
-    iters = instructions['dilation_iterations']
+    # Extensión hacia abajo: para cada columna, extender desde el último pixel de pelo
+    for col in range(w):
+        col_mask = mask[:, col]
+        rows_with_hair = np.where(col_mask > 0)[0]
+        if len(rows_with_hair) > 0:
+            bottom_hair = rows_with_hair[-1]
+            # Extender hacia abajo: ~40% de la altura (donde caería pelo largo)
+            extension_pixels = min(int(h * 0.42), h - bottom_hair - 1)
+            if extension_pixels > 0:
+                start_row = bottom_hair + 1
+                end_row = min(bottom_hair + extension_pixels, h)
+                for i, row in enumerate(range(start_row, end_row)):
+                    progress = i / max(extension_pixels - 1, 1)
+                    alpha = 1.0 - (progress * 0.65)  # Gradiente suave
+                    extended[row, col] = max(extended[row, col], int(255 * alpha))
+    
+    # Extensión lateral suave (el pelo largo puede caer a los lados)
+    kernel_wide = np.ones((5, 25), np.uint8)
+    extended = cv2.dilate(extended, kernel_wide, iterations=1)
+    
+    # Suavizado en bordes para transición natural, evitar corte artificial
+    extended = cv2.GaussianBlur(extended, (15, 15), 0)
+    extended = np.clip(extended, 0, 255).astype(np.uint8)
+    extended = np.where(extended > 80, 255, 0).astype(np.uint8)
+    
+    return extended
+
+
+def processs_dynamic_mask(mask_np, instructions):
+    m = np.asarray(mask_np).squeeze()
+    # Categoría 1 = cabello (selfie_multiclass / hair_segmenter)
+    mask = np.where(m == 1, 255, 0).astype(np.uint8)
+    
+    style = str(instructions.get('style', '')).lower()
+    try:
+        iters = int(instructions.get('dilation_iterations', 1))
+    except (TypeError, ValueError):
+        iters = 1
     
     kernel = np.ones((11, 11), np.uint8)
     
     if style == "long":
-        # Expandir significativamente hacia abajo para dar espacio al pelo largo
-        # Creamos una dilatación selectiva o más agresiva
-        mask = cv2.dilate(mask, kernel, iterations=int(iters))
+        # Extensión agresiva: dilatación inicial + extensión hacia abajo para pelo largo
+        mask = cv2.dilate(mask, kernel, iterations=max(2, int(iters)))
+        mask = _extend_mask_downward_for_long_hair(mask)
     elif style == "bald":
         # Dilatación moderada para limpiar bordes de pelo viejo
         mask = cv2.dilate(mask, kernel, iterations=int(iters)+1)
     
-    # Suavizado para evitar cortes bruscos ("manchas")
-    #mask = cv2.GaussianBlur(mask, (51, 51), 0)
     return mask
 
 def generate_new_style(image: bytes, prompt: str):
@@ -109,8 +159,23 @@ def generate_new_style(image: bytes, prompt: str):
 
 
     image_mediapipe = process_image(image)
-    mask = segmenter_hair(image_mediapipe, segmenter)
+    mask = segmenter_hair(image_mediapipe)
     mask_dynamic = processs_dynamic_mask(mask, instructions)
+    # Protección del rostro: la máscara NUNCA debe cubrir la cara
+    mask_dynamic = _apply_face_protection(mask_dynamic, image)
+
+    # Personas calvas o poco cabello: si hay muy poca región de cabello, usar máscara de scalp
+    hair_pixels = np.sum(mask_dynamic > 0)
+    total_pixels = mask_dynamic.shape[0] * mask_dynamic.shape[1]
+    if hair_pixels < total_pixels * 0.02 or hair_pixels < 1500:
+        scalp_mask = get_scalp_mask_for_bald(image)
+        if scalp_mask is not None and np.sum(scalp_mask > 0) > 1500:
+            mask_dynamic = scalp_mask
+        elif hair_pixels == 0:
+            raise ValueError(
+                "No se detectó región de cabello para editar. Verifica que la imagen muestre claramente "
+                "la cabeza y el rostro de la persona (frontal, buena iluminación)."
+            )
     
     # Convertimos el mural en el "paquete" de un archivo PNG
     exito, buffer = cv2.imencode('.png', mask_dynamic)
@@ -119,32 +184,48 @@ def generate_new_style(image: bytes, prompt: str):
     mask_image = base64.b64encode(mask_bytes).decode('utf-8')
     
     seed = random.randint(0,2147483646)
+    
+    # grow_mask para transición suave (máx 20). Mayor valor para cabello largo o agregar a calvo.
+    style_val = str(instructions.get('style', '')).lower()
+    if style_val in ('long', 'add_hair'):
+        grow_mask_val = 12
+    else:
+        grow_mask_val = 6
 
+    refined = instructions.get('refined_prompt') or 'same face unchanged, photorealistic natural hair'
+    negative = instructions.get('negative_prompt') or 'deformed face, distorted, blurry, cartoon, filter, artificial, wig, fake hair'
     native_request = {
-            "prompt": instructions['refined_prompt'],
-            "negative_prompt": instructions['negative_prompt'],
+            "prompt": refined,
+            "negative_prompt": negative,
             "image": input_image,   # imagen original en base64
             "mask": mask_image,    # máscara en base64
             "seed": seed,
-            "grow_mask":0,
+            "grow_mask": grow_mask_val,
     } 
     
 
     request = json.dumps(native_request)
 
-    response = client.invoke_model(body=request, modelId=model_id)
+    try:
+        response = client.invoke_model(body=request, modelId=model_id)
+    except Exception as e:
+        raise RuntimeError(f"Error al invocar el modelo de inpainting: {e}") from e
 
     response_model = json.loads(response["body"].read())
+    images = response_model.get('images', [])
+    if not images:
+        raise RuntimeError("El modelo de inpainting no devolvió ninguna imagen.")
 
-    base64_image_data = response_model['images'][0]
-
+    base64_image_data = images[0]
     image_data = base64.b64decode(base64_image_data)
 
     # Convertir a array numpy
     nparr = np.frombuffer(image_data, np.uint8)
 
     result_image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-  
+    if result_image is None:
+        raise RuntimeError("No se pudo decodificar la imagen generada.")
+
     return result_image
     
 """     

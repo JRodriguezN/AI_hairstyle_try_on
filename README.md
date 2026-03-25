@@ -61,6 +61,20 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+### 5. Descargar modelos (obligatorio)
+
+Ejecuta el script para descargar los modelos de segmentación y detección facial:
+
+```bash
+python scripts/download_model.py
+```
+
+Esto descargará:
+- `hair_segmenter.tflite` – segmentación de cabello
+- `face_landmarker.task` – landmarks faciales (protección precisa del rostro, óvalo facial)
+
+Sin estos modelos, la aplicación iniciará pero las funciones de cabello devolverán error 503.
+
 ---
 
 ## Uso
@@ -89,11 +103,11 @@ La aplicación estará disponible en: **http://localhost:8000**
 hair_try_on/
 ├── main.py                          # Aplicación principal (FastAPI)
 ├── requirements.txt                 # Dependencias de Python
-├── Models/                          # Modelos de TensorFlow Lite
-│   ├── efficientdet_lite0.tflite   # Detector de objetos
+├── Models/                          # Modelos de TensorFlow Lite (ejecutar scripts/download_model.py)
 │   ├── hair_segmenter.tflite       # Segmentador de cabello
-│   ├── selfie_segmenter.tflite     # Segmentador de personas (retrato)
-│   └── selfie_segmenter_landscape.tflite  # Segmentador de personas (paisaje)
+│   └── face_landmarker.task  # Landmarks faciales (protección precisa del rostro)
+├── scripts/
+│   └── download_model.py           # Script para descargar modelos
 ├── routes/                          # Rutas de la API
 │   ├── segmentation.py              # Endpoint de segmentación
 │   └── inpainting.py                # Endpoint de generación de estilos
@@ -207,8 +221,10 @@ Luego edita `.env` con tus valores.
 
 ### Errores de modelos (`*.tflite`)
 
-- Verifica que la carpeta `Models/` contiene todos los archivos `.tflite`
-- Los modelos deben descargarse de la fuente original si no existen
+- Ejecuta `python scripts/download_model.py` para descargar los modelos automáticamente
+- Si falla, descarga manualmente desde:
+  - [hair_segmenter.tflite](https://huggingface.co/yolain/selfie_multiclass_256x256/blob/main/hair_segmenter.tflite)
+  - [face_landmarker.task](https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task)
 
 ### Problemas de memoria
 
