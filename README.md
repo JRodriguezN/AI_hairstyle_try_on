@@ -283,4 +283,4 @@ Este proyecto está disponible bajo una licencia libre (especificar si aplica).
 
 ## Última actualización
 
-12 de marzo de 2026
+23 de marzo de 2026
