@@ -5,6 +5,7 @@ import numpy as np
 from pathlib import Path
 from typing import Optional
 from dotenv import load_dotenv
+from mediapipe.tasks.python.vision.core.image import Image
 
 
 load_dotenv()
@@ -22,14 +23,23 @@ ll_model_id= "us.meta.llama3-1-70b-instruct-v1:0"
 from services.face_landmarks_service import get_face_oval_mask, get_scalp_mask_for_bald
 
 
-def _apply_face_protection(mask: np.ndarray, image_bytes: bytes) -> np.ndarray:
+def _apply_face_protection(mask: np.ndarray, image: Image) -> np.ndarray:
     """
     Elimina de la máscara cualquier píxel que cubra el rostro.
     Usa FaceLandmarker (óvalo facial preciso) en lugar de bounding box.
     """
-    face_mask = get_face_oval_mask(image_bytes, padding=0.06)
-    if face_mask is not None:
-        mask = np.where(face_mask > 0, 0, mask).astype(np.uint8)
+    result = segmenter_hair(image)
+    category_mask = result.squeeze()
+
+    face_class = 3
+    skin_class = 2
+    face_mask_1 = (category_mask == face_class).astype(np.uint8) *255
+    face_mask = (category_mask == skin_class).astype(np.uint8) *255
+
+    # Eliminar rostro de la máscara original
+    mask = np.where(face_mask_1 > 0, 0 , mask).astype(np.uint8)
+    mask = np.where(face_mask > 0, 0 , mask).astype(np.uint8)
+
     return mask
 
 
@@ -161,8 +171,10 @@ def generate_new_style(image: bytes, prompt: str):
     image_mediapipe = process_image(image)
     mask = segmenter_hair(image_mediapipe)
     mask_dynamic = processs_dynamic_mask(mask, instructions)
+
     # Protección del rostro: la máscara NUNCA debe cubrir la cara
-    mask_dynamic = _apply_face_protection(mask_dynamic, image)
+
+    mask_dynamic = _apply_face_protection(mask_dynamic, image_mediapipe)
 
     # Personas calvas o poco cabello: si hay muy poca región de cabello, usar máscara de scalp
     hair_pixels = np.sum(mask_dynamic > 0)

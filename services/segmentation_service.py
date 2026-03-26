@@ -7,7 +7,7 @@ from pathlib import Path
 
 # Ruta del modelo relativa al directorio del proyecto (independiente del cwd)
 _model_dir = Path(__file__).resolve().parent.parent
-_model_path = _model_dir / "Models" / "hair_segmenter.tflite"
+_model_path = _model_dir / "Models" / "selfie_multiclass_256x256.tflite"
 
 _segmenter = None
 
@@ -63,6 +63,7 @@ def segmenter_hair(image: Image, segmenter=None):
     
     category_mask =  segmenter_result.category_mask
     category_mask_np = category_mask.numpy_view()
+
     ##hair_color = (255,255,255)
     #print(category_mask_np.shape)
     ##category_mask_rgb = cv2.cvtColor(category_mask_np,cv2.COLOR_GRAY2RGB)
@@ -71,9 +72,6 @@ def segmenter_hair(image: Image, segmenter=None):
     ##category_mask_rgb[np.where(category_mask_np.squeeze() == 1)] = hair_color
     #mask_bin = np.where(category_mask_np.squeeze() == 1, 0, 255).astype(np.uint8)
     
-    
     return category_mask_np
-    
- 
     
     
