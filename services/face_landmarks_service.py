@@ -153,23 +153,39 @@ def get_scalp_mask_for_bald(image_bytes: bytes) -> Optional[np.ndarray]:
     pts_int = np.array(pts, dtype=np.int32)
     cv2.fillPoly(face_mask, [pts_int], 255)
 
-    head_width = face_width * 1.85
-    scalp_top = max(0, y_min - face_height * 0.8)
-    scalp_bottom = y_min + face_height * 0.75
+    # EXPANSIÓN DE PROTECCIÓN (CLAVE)
+    kernel_face = np.ones((15, 15), np.uint8)
+    protected_face_mask = cv2.dilate(face_mask, kernel_face, iterations=2)
+    
+    head_width = face_width * 1.5  # 🔧 reducido (antes 1.85)
+    scalp_top = max(0, y_min - face_height * 0.35)
+    scalp_bottom = y_min + face_height * 0.55  # 🔧 evita mejillas
+
     x1 = int(max(0, center_x - head_width / 2))
     x2 = int(min(w, center_x + head_width / 2))
+
+    # RECORTE LATERAL (PROTEGE MEJILLAS)
+    side_margin = int(face_width * 0.15)
+    x1 += side_margin
+    x2 -= side_margin
+
     y1_scalp = int(max(0, scalp_top - 5))
-    y2_scalp = int(min(h, scalp_bottom + 15))
+    y2_scalp = int(min(h, scalp_bottom + 10))
 
     scalp_mask = np.zeros((h, w), dtype=np.uint8)
     scalp_mask[y1_scalp:y2_scalp, x1:x2] = 255
 
-    scalp_mask = np.where(face_mask > 0, 0, scalp_mask).astype(np.uint8)
+    scalp_mask = np.where(protected_face_mask > 0, 0, scalp_mask).astype(np.uint8)
 
-    kernel = np.ones((21, 21), np.uint8)
-    scalp_mask = cv2.dilate(scalp_mask, kernel, iterations=2)
-    scalp_mask = np.where(face_mask > 0, 0, scalp_mask).astype(np.uint8)
-    scalp_mask = cv2.GaussianBlur(scalp_mask, (25, 25), 0)
+    kernel = np.ones((15, 15), np.uint8)
+    scalp_mask = cv2.dilate(scalp_mask, kernel, iterations=1)
+
+    scalp_mask = cv2.GaussianBlur(scalp_mask, (15, 15), 0)
+
+    # REAPLICAR PROTECCIÓN (CRÍTICO)
+    scalp_mask = np.where(protected_face_mask > 0, 0, scalp_mask).astype(np.uint8)
+
+    # BINARIZAR
     scalp_mask = np.where(scalp_mask > 40, 255, 0).astype(np.uint8)
 
     if np.sum(scalp_mask) < 2000:
