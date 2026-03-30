@@ -14,7 +14,7 @@ load_dotenv()
 client = boto3.client('bedrock-runtime', region_name='us-east-1')
 
 #model_id = "amazon.titan-image-generator-v2:0"
-model_id = "arn:aws:bedrock:us-east-1:911701613368:inference-profile/us.stability.stable-image-inpaint-v1:0"
+model_id = "us.stability.stable-image-inpaint-v1:0"
 
 #Model for LLM
 ll_model_id= "us.meta.llama3-1-70b-instruct-v1:0"
@@ -212,7 +212,6 @@ def processs_dynamic_mask(mask_np, instructions):
     m = np.asarray(mask_np).squeeze()
     # Categoría 1 = cabello (selfie_multiclass / hair_segmenter)
     mask = np.where(m == 1, 255, 0).astype(np.uint8)
-    cv2.imwrite("Mascara antes de dilatar.png",mask)
     
     style = str(instructions.get('style', '')).lower()
     try:
