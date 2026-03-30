@@ -8,8 +8,6 @@ import cv2
 import numpy as np
 
 hair_try__in_route = APIRouter()
-root_dir = Path(__file__).resolve().parents[2]
-output_dir = root_dir / "Inputs"
 
 def resize_for_model(image_bytes, max_size=(1024, 1024)):
     np_arr = np.frombuffer(image_bytes, np.uint8)
