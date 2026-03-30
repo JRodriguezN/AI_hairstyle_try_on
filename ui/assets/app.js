@@ -15,6 +15,7 @@ const responseMessage = document.getElementById("response-message");
 const downloadLink = document.getElementById("download-link");
 const dropzone = document.getElementById("dropzone");
 const promptChips = document.querySelectorAll(".prompt-chip");
+const colorChips = document.querySelectorAll(".color-chip");
 const stepUpload = document.getElementById("step-upload");
 const stepPrompt = document.getElementById("step-prompt");
 const stepGenerate = document.getElementById("step-generate");
@@ -195,6 +196,96 @@ promptChips.forEach((chip) => {
         promptInput.focus();
         updatePromptCounter();
         syncWorkflow();
+    });
+});
+
+let selectedColor = null;
+
+async function generateResult({ file, prompt, colorHex, colorName } = {}) {
+    if (!file) {
+        setStatus("Falta imagen", "error");
+        responseMessage.textContent = "Selecciona una fotografía antes de generar el resultado.";
+        return;
+    }
+
+    const usedPrompt = (prompt && prompt.trim()) || (colorName ? `Change hair color to ${colorName}` : "");
+    if (!usedPrompt) {
+        setStatus("Falta prompt", "error");
+        responseMessage.textContent = "Escribe el estilo o cambio deseado para continuar.";
+        promptInput.focus();
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("image", file);
+    formData.append("prompt", usedPrompt);
+    if (colorHex) {
+        formData.append("color", colorHex);
+    }
+
+    submitButton.disabled = true;
+    if (clearButton) {
+        clearButton.disabled = true;
+    }
+    loadingState.classList.remove("hidden");
+    resultEmpty.classList.add("hidden");
+    responseMessage.textContent = "";
+    setStatus("Generando resultado", "loading");
+    syncWorkflow({ loading: true });
+
+    try {
+        const response = await fetch("/hair/change", {
+            method: "POST",
+            body: formData,
+        });
+
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            const detail = Array.isArray(payload.detail)
+                ? payload.detail.map((d) => d.msg ?? String(d)).join(" ")
+                : payload.detail ?? "No fue posible generar el resultado.";
+            throw new Error(detail);
+        }
+
+        if (!payload.image_mime_type || !payload.image_base64) {
+            throw new Error("La respuesta no contiene una imagen valida.");
+        }
+
+        const resultUrl = `data:${payload.image_mime_type};base64,${payload.image_base64}`;
+        resultPreview.src = resultUrl;
+        resultPreview.classList.remove("hidden");
+        loadingState.classList.add("hidden");
+        downloadLink.href = resultUrl;
+        downloadLink.classList.remove("hidden");
+        setStatus("Resultado listo", "success");
+        responseMessage.textContent = `${payload.message ?? "Resultado generado"}.`;
+        syncWorkflow();
+    } catch (error) {
+        loadingState.classList.add("hidden");
+        resultEmpty.classList.remove("hidden");
+        setStatus("Error", "error");
+        responseMessage.textContent = error.message;
+        syncWorkflow();
+    } finally {
+        submitButton.disabled = false;
+        if (clearButton) {
+            clearButton.disabled = false;
+        }
+    }
+}
+
+colorChips.forEach((chip) => {
+    chip.addEventListener("click", () => {
+        const name = chip.dataset.name || chip.title || "";
+        const hex = chip.dataset.color || "";
+        selectedColor = { name, hex };
+        colorChips.forEach((c) => c.classList.remove("selected"));
+        chip.classList.add("selected");
+
+        // Auto-generate immediately when a color is chosen
+        const file = imageInput.files[0];
+        const prompt = promptInput.value.trim();
+        generateResult({ file, prompt, colorHex: hex, colorName: name });
     });
 });
 
