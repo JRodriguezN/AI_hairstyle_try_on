@@ -73,37 +73,46 @@
                             required
                         ></textarea>
 
-                        <div class="suggestion-row" aria-label="Seleccionar color de cabello">
-                            <button type="button" class="color-chip" data-color="#111111" data-name="Negro" title="Negro">
-                                <span class="swatch" style="background:#111111"></span>
-                            </button>
-                            <button type="button" class="color-chip" data-color="#3b2b1f" data-name="Castaño oscuro" title="Castaño oscuro">
-                                <span class="swatch" style="background:#3b2b1f"></span>
-                            </button>
-                            <button type="button" class="color-chip" data-color="#6b4326" data-name="Castaño" title="Castaño">
-                                <span class="swatch" style="background:#6b4326"></span>
-                            </button>
-                            <button type="button" class="color-chip" data-color="#a67c52" data-name="Castaño claro" title="Castaño claro">
-                                <span class="swatch" style="background:#a67c52"></span>
-                            </button>
-                            <button type="button" class="color-chip" data-color="#d6b370" data-name="Rubio" title="Rubio">
-                                <span class="swatch" style="background:#d6b370"></span>
-                            </button>
-                            <button type="button" class="color-chip" data-color="#b0826a" data-name="Rubio ceniza" title="Rubio ceniza">
-                                <span class="swatch" style="background:#b0826a"></span>
-                            </button>
-                            <button type="button" class="color-chip" data-color="#9b2b1b" data-name="Cambia el color de mi cabello a Rojo" title="Rojo">
-                                <span class="swatch" style="background:#ff0000"></span>
-                            </button>
-                            <button type="button" class="color-chip" data-color="#7a3b24" data-name="Cobrizo" title="Cobrizo">
-                                <span class="swatch" style="background:#7a3b24"></span>
-                            </button>
-                            <button type="button" class="color-chip" data-color="#9ea3a6" data-name="Gris" title="Gris">
-                                <span class="swatch" style="background:#9ea3a6"></span>
-                            </button>
-                            <button type="button" class="color-chip" data-color="#f3f4f6" data-name="Platinado" title="Platinado">
-                                <span class="swatch" style="background:#f3f4f6"></span>
-                            </button>
+                        <div class="suggestion-row" aria-label="Seleccionar género y estilo">
+                            <div class="gender-toggle" role="tablist" aria-label="Seleccionar género">
+                                <button type="button" class="gender-button" data-gender="female" id="btn-female">Mujer</button>
+                                <button type="button" class="gender-button" data-gender="male" id="btn-male">Hombre</button>
+                            </div>
+
+                            <div id="styles-grid" class="styles-grid" aria-live="polite">
+                                <!-- Female styles (6) -->
+                                <button type="button" class="style-card" data-gender="female" data-style="long straight hair, smooth texture, natural shine, well-groomed, realistic lighting, high detail, frontal portrait">
+                                    <img src="assets/img/Largo_lacio.png" alt="Rizos Cortos">
+                                    <span>Largo lacio</span>
+                                </button>
+
+                                <button type="button" class="style-card" data-gender="female" data-style="short bob haircut, chin-length, soft texture, slightly layered, natural look, realistic lighting, frontal view">
+                                    <img src="assets/img/Mujer_bob_corto.png" alt="Bob Recto">
+                                    <span>Bob Corto</span>
+                                </button>
+
+                                <button type="button" class="style-card" data-gender="female" data-style="medium length curly hair, defined curls, natural volume, healthy texture, realistic lighting, frontal portrait">
+                                    <img src="assets/img/mujer_rizado.png" alt="Melena Larga">
+                                    <span>Rizado Medio</span>
+                                </button>
+
+                                <!-- Male styles (6) -->
+                                <button type="button" class="style-card" data-gender="male" data-style="classic fade haircut, clean fade on sides, short to medium length on top, sharp and neat, realistic lighting, frontal portrait">
+                                    <img src="assets/img/masculino.png" alt="Fade Clásico">
+                                    <span>Fade Clásico</span>
+                                </button>
+
+                                <button type="button" class="style-card" data-gender="male" data-style="long hair for men, shoulder-length or longer, natural flow, slightly layered, healthy texture, masculine look, realistic lighting, frontal portrait, high detail">
+                                    <img src="assets/img/cabello_largo_hombre.png" alt="Pompadour">
+                                    <span>Cabello Largo</span>
+                                </button>
+
+                                <button type="button" class="style-card" data-gender="male" data-style="bald head, fully shaved, even skin tone, sharp facial features">
+                                    <img src="assets/img/calvo_hombre.png" alt="Buzz Cut">
+                                    <span>Calvo</span>
+                                </button>
+
+                            </div>
                         </div>
                     </div>
 

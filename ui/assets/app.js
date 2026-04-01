@@ -15,7 +15,10 @@ const responseMessage = document.getElementById("response-message");
 const downloadLink = document.getElementById("download-link");
 const dropzone = document.getElementById("dropzone");
 const promptChips = document.querySelectorAll(".prompt-chip");
-const colorChips = document.querySelectorAll(".color-chip");
+const genderButtons = document.querySelectorAll(".gender-button");
+const stylesGrid = document.getElementById("styles-grid");
+
+// style cards are inside the grid; we'll query dynamically when needed
 const stepUpload = document.getElementById("step-upload");
 const stepPrompt = document.getElementById("step-prompt");
 const stepGenerate = document.getElementById("step-generate");
@@ -200,6 +203,7 @@ promptChips.forEach((chip) => {
 });
 
 let selectedColor = null;
+let selectedStyle = null;
 
 async function generateResult({ file, prompt, colorHex, colorName } = {}) {
     if (!file) {
@@ -274,20 +278,54 @@ async function generateResult({ file, prompt, colorHex, colorName } = {}) {
     }
 }
 
-colorChips.forEach((chip) => {
-    chip.addEventListener("click", () => {
-        const name = chip.dataset.name || chip.title || "";
-        const hex = chip.dataset.color || "";
-        selectedColor = { name, hex };
-        colorChips.forEach((c) => c.classList.remove("selected"));
-        chip.classList.add("selected");
+// Gender buttons: show styles for the selected gender
+if (genderButtons && genderButtons.length) {
+    genderButtons.forEach((btn) => {
+        btn.addEventListener("click", () => {
+            const gender = btn.dataset.gender;
+            genderButtons.forEach((b) => b.classList.remove("active"));
+            btn.classList.add("active");
 
-        // Auto-generate immediately when a color is chosen
-        const file = imageInput.files[0];
-        const prompt = promptInput.value.trim();
-        generateResult({ file, prompt, colorHex: hex, colorName: name });
+            // Show only cards matching the selected gender
+            if (stylesGrid) {
+                const cards = stylesGrid.querySelectorAll('.style-card');
+                cards.forEach((c) => {
+                    if (c.dataset.gender === gender) {
+                        c.classList.remove('hidden');
+                    } else {
+                        c.classList.add('hidden');
+                    }
+                });
+            }
+        });
     });
+}
+
+// Style card selection: clicking a card sets the prompt and marks it selected
+document.addEventListener('click', (event) => {
+    const card = event.target.closest('.style-card');
+    if (!card) return;
+
+    // select/deselect visuals
+    const cards = document.querySelectorAll('.style-card');
+    cards.forEach((c) => c.classList.remove('selected'));
+    card.classList.add('selected');
+    selectedStyle = card.dataset.style || '';
+
+    // Set prompt input to the chosen style (user can edit before generating)
+    if (promptInput) {
+        promptInput.value = selectedStyle;
+        updatePromptCounter();
+        syncWorkflow();
+    }
 });
+
+// Set a default gender selection (show male styles by default)
+const defaultBtn = document.querySelector('.gender-button[data-gender="male"]') || document.querySelector('.gender-button');
+if (defaultBtn) {
+    // Trigger the click handler to apply the filter
+    defaultBtn.click();
+}
 
 if (clearButton) {
     clearButton.addEventListener("click", clearForm);
