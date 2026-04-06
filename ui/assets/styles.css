@@ -87,7 +87,8 @@ img {
 }
 
 .hero-panel {
-    max-width: 880px;
+    max-width: 1280px;
+    width: 100%;
     animation: rise-in 600ms ease-out both;
 }
 
@@ -124,10 +125,11 @@ img {
 }
 
 .workflow-steps {
-    margin-top: 20px;
+    margin-top: 12px;
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    width: 80%;
 }
 
 .step-item {
@@ -191,7 +193,7 @@ img {
     flex-direction: column;
     gap: 10px;
     margin-top: 14px;
-    align-items: flex-start;
+    align-items: center; 
 }
 
 .prompt-chip {
@@ -247,7 +249,7 @@ img {
 /* Gender toggle + styles grid */
 .gender-toggle {
     display: inline-flex;
-    gap: 8px;
+    gap: 12px;
     margin-bottom: 12px;
     flex: 0 0 auto;
 }
@@ -256,11 +258,13 @@ img {
     border: 1px solid rgba(245, 248, 252, 0.08);
     background: rgba(29,35,44,0.72);
     color: var(--ink);
-    padding: 8px 14px;
+    padding: 06px 12px;
     border-radius: 999px;
     font-weight: 700;
     cursor: pointer;
     white-space: nowrap;
+    font-size: 0.8rem;
+    min-width: 96px;
 }
 
 .gender-button-group {
@@ -427,8 +431,10 @@ textarea:focus {
 .action-row {
     margin-top: 18px;
     display: flex;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
 }
 
 .primary-button,
@@ -440,6 +446,13 @@ textarea:focus {
     font-weight: 700;
     cursor: pointer;
     transition: transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
+}
+
+/* Smaller buttons when in the action-row (right-aligned) */
+.action-row .primary-button,
+.action-row .secondary-button {
+    padding: 10px 16px;
+    font-size: 0.9rem;
 }
 
 .primary-button {

@@ -23,7 +23,7 @@
                 </p>
 
                 <div class="workflow-steps" aria-label="Pasos para usar la herramienta">
-                    <article id="step-upload" class="step-item is-active" aria-live="polite">
+                    <article id="step-upload" class="step-item" aria-live="polite">
                         <span class="step-index">1</span>
                         <div>
                             <p class="step-title">Upload a photo</p>
@@ -42,6 +42,13 @@
                         <div>
                             <p class="step-title">Generate and download</p>
                             <p class="step-copy">Compare the original and the result instantly.</p>
+                        </div>
+                    </article>
+                    <article id="step-option" class="step-item is-active" aria-live="polite">
+                        <span class="step-index"></span>
+                        <div>
+                            <p class="step-title">Optional</p>
+                            <p class="step-copy">Use the predefined styles for men and women.</p>
                         </div>
                     </article>
                 </div>
@@ -73,11 +80,20 @@
                             required
                         ></textarea>
 
+                        <div class="action-row">
+                            <button id="submit-button" type="submit" class="primary-button">Generate result</button>
+                            <button id="clear-button" type="button" class="secondary-button">Clear</button>
+                        </div>
+
+                    </div>
+
+
+                    <div class="field-group">
+                        <div class="option-head">
+                            <label for="option-input" class="field-label">Predefined changes</label>
+                        </div>
+
                         <div class="suggestion-row" aria-label="Seleccionar género y estilo">
-                            <div class="gender-toggle" role="tablist" aria-label="Seleccionar género">
-                                <button type="button" class="gender-button" data-gender="female" id="btn-female">Mujer</button>
-                                <button type="button" class="gender-button" data-gender="male" id="btn-male">Hombre</button>
-                            </div>
 
                             <div id="styles-grid" class="styles-grid" aria-live="polite">
                                 <!-- Female styles (6) -->
@@ -113,12 +129,11 @@
                                 </button>
 
                             </div>
+                            <div class="gender-toggle" role="tablist" aria-label="Seleccionar género">
+                                <button type="button" class="gender-button" data-gender="female" id="btn-female">Mujer</button>
+                                <button type="button" class="gender-button" data-gender="male" id="btn-male">Hombre</button>
+                            </div>
                         </div>
-                    </div>
-
-                    <div class="action-row">
-                        <button id="submit-button" type="submit" class="primary-button">Generate result</button>
-                        <button id="clear-button" type="button" class="secondary-button">Clear</button>
                     </div>
 
                     <!---- <p class="helper-text">Atajo: usa <kbd>Ctrl</kbd> + <kbd>Enter</kbd> para generar rapido.</p> -->
