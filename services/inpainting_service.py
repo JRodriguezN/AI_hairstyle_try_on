@@ -1,4 +1,5 @@
 from services.segmentation_service import process_image, segmenter_hair
+from services.hair_analysis_service import analyze_hair
 import boto3
 import base64, cv2, json, random
 import numpy as np
@@ -23,7 +24,7 @@ ll_model_id= "us.meta.llama3-1-70b-instruct-v1:0"
 from services.face_landmarks_service import get_face_oval_mask, get_scalp_mask_for_bald
 
 
-def _apply_face_protection(mask: np.ndarray, image: Image,  style: str = "default") -> np.ndarray:
+def _apply_face_protection(mask: np.ndarray, image: Image,  hair_info: str = "default") -> np.ndarray:
     """
     Elimina de la máscara cualquier píxel que cubra el rostro.
     Usa FaceLandmarker (óvalo facial preciso) en lugar de bounding box.
@@ -35,15 +36,15 @@ def _apply_face_protection(mask: np.ndarray, image: Image,  style: str = "defaul
     skin_class = 2
     face_mask = ((category_mask == face_class) | (category_mask == skin_class)).astype(np.uint8) * 255
 
-    if style == "bald":
+    """if hair_info == "bald":
         kernel = np.ones((4, 4), np.uint8)  # menos agresivo
         iterations = 0
-    else:
-        kernel = np.ones((10, 10), np.uint8)
-        iterations = 2
-
+    else:"""
+    kernel = np.ones((10, 10), np.uint8)
+    iterations = 2
+    
     face_mask_dilated = cv2.dilate(face_mask, kernel, iterations=iterations)
-    if style == "bald" or style == "add_hair":
+    if hair_info["is_bald"]:
         ys, xs = np.where(face_mask_dilated > 0)
 
         if len(ys) > 0:
@@ -56,8 +57,22 @@ def _apply_face_protection(mask: np.ndarray, image: Image,  style: str = "defaul
             forehead_cut = int(face_height * 0.18)
 
             face_mask_dilated[top_y:top_y + forehead_cut, :] = 0
+    else:
+        ys, xs = np.where(face_mask_dilated > 0)
+
+        if len(ys) > 0:
+            top_y = np.min(ys)        # donde empieza la cara
+            bottom_y = np.max(ys)
+
+            face_height = bottom_y - top_y
+
+            # 🔥 cortar SOLO la frente (10%–20% funciona bien)
+            forehead_cut = int(face_height * 0.18)
+
+            face_mask_dilated[top_y:top_y + forehead_cut, :] = 0
+            
     # eliminar completamente esa zona
-    mask = np.where(face_mask_dilated > 0, 0, mask).astype(np.uint8)
+    mask = np.where(face_mask_dilated> 0, 0, mask).astype(np.uint8)
 
 
     return mask
@@ -68,12 +83,11 @@ def get_technical_instructions(user_prompt):
     You are a technical image editing assistant specialized in photorealistic hair transformations.
     Analyze the user's request carefully and output ONLY a valid JSON object with these keys:
     
-    - "style": (choose one: "long", "short", "bald", "color", "add_hair")
+    - "style": (choose one: "long", "short", "bald", "color")
     
         * Use "long" when the user wants to extend short hair to shoulders, chest, or longer.
         * Use "short" when the user wants to reduce long hair to bob, pixie, or similar.
         * Use "bald" when the user wants to remove all hair and show a clean shaved scalp.
-        * Use "add_hair" when the user is bald and wants to add hair (short, medium, or long).
         * Use "color" when the user wants to change hair color or style without altering length.
 
 
@@ -83,7 +97,6 @@ def get_technical_instructions(user_prompt):
         * For LONG hair: "same face unchanged, photorealistic, natural long flowing hair extending to chest, realistic hair strands and texture, seamless integration with scalp, natural lighting, like a real photograph".
         * For SHORT hair: "same face unchanged, photorealistic, short natural haircut, realistic strands and texture, seamless integration with scalp, natural lighting".
         * For BALD: "same face unchanged, photorealistic, completely bald head, fully shaved scalp, no hair at all, no stubble, no hair strands, smooth natural scalp skin, visible pores, realistic skin texture, natural lighting".
-        * For ADD_HAIR: "same face unchanged, photorealistic, natural hair growing from scalp, full head of hair, realistic hairline and texture, seamless blend with skin, natural lighting".
         * For COLOR: "same face unchanged, photorealistic, keep exact same hairstyle, haircut, and hair length, only change hair color, realistic tones, preserve hair structure, strands and volume, seamless integration, natural lighting".
     
     - "negative_prompt": (MANDATORY: depends on the style)
@@ -95,7 +108,7 @@ def get_technical_instructions(user_prompt):
         altered face, asymmetric face, blurry, bad anatomy, cartoon, cgi,
         render, artificial, oversaturated, modified eyebrows, modified eyes, modified skin, face retouch"
 
-        * For "long" or "add_hair":
+        * For "long":
         "bald, shaved head, receding hairline, missing hair patches,
         deformed face, distorted face, different person, identity change,
         altered face, asymmetric face, blurry, bad anatomy, cartoon, cgi,
@@ -119,12 +132,13 @@ def get_technical_instructions(user_prompt):
         unrealistic hairline, modified eyebrows, modified eyes, modified skin, face retouch"
     
     - "dilation_iterations": 
-        * 3–4 for "long" or "add_hair"
+        * 3–4 for "long"
         * 2 for "bald"
         * 1 for "short" or "color"
         
     Rules:
     - Face must stay EXACTLY the same.
+    - Skin color must be the same
     - Hair must look real, not like a filter or CGI.
     - Always output a valid JSON object with the keys above.
     - For "color": The hairstyle, haircut, hair length, and hair texture MUST remain exactly the same. 
@@ -208,10 +222,7 @@ def _extend_mask_downward_for_long_hair(mask: np.ndarray) -> np.ndarray:
     return extended
 
 
-def processs_dynamic_mask(mask_np, instructions):
-    m = np.asarray(mask_np).squeeze()
-    # Categoría 1 = cabello (selfie_multiclass / hair_segmenter)
-    mask = np.where(m == 1, 255, 0).astype(np.uint8)
+def processs_dynamic_mask(mask, instructions, hair_info):
     
     style = str(instructions.get('style', '')).lower()
     try:
@@ -221,9 +232,9 @@ def processs_dynamic_mask(mask_np, instructions):
     
     kernel = np.ones((11, 11), np.uint8)
     
-    if style == "long":
+    if style == "long" and hair_info['length'] != 'long':
         # Extensión agresiva: dilatación inicial + extensión hacia abajo para pelo largo
-        mask = cv2.dilate(mask, kernel, iterations=max(2, int(iters)))
+        #mask = cv2.dilate(mask, kernel, iterations=max(2, int(iters)))
         mask = _extend_mask_downward_for_long_hair(mask)
     elif style == "short":
         # Cabello corto: ligera dilatación para limpiar bordes
@@ -231,10 +242,7 @@ def processs_dynamic_mask(mask_np, instructions):
     elif style == "bald":
         # Dilatación moderada para limpiar bordes de pelo viejo
         mask = cv2.dilate(mask, kernel, iterations=int(iters)+1)
-    elif style == "add_hair":
-        # Agregar cabello: dilatación fuerte para cubrir cuero cabelludo
-        mask = cv2.dilate(mask, kernel, iterations=max(3, iters))
-        mask = _extend_mask_downward_for_long_hair(mask)  # se puede ajustar
+
     elif style == "color":
         pass
     
@@ -243,15 +251,28 @@ def processs_dynamic_mask(mask_np, instructions):
 def generate_new_style(image: bytes, prompt: str):
     instructions = get_technical_instructions(prompt)  
 
+    # Procesar imagen y realizar segmentacion
     image_mediapipe = process_image(image)
-    mask = segmenter_hair(image_mediapipe)
-    mask_dynamic = processs_dynamic_mask(mask, instructions)
+    hair_mask = segmenter_hair(image_mediapipe)
+    
+    # Convertir a binaria
+    hair_mask = np.where(hair_mask.squeeze() == 1, 255, 0).astype(np.uint8)
+    face_mask = get_face_oval_mask(image)
+    
+    hair_info = analyze_hair(hair_mask,face_mask)
+    
+    if hair_info["is_bald"]:
+        # Si no tiene mucho cabello genera un mascara automatica
+        hair_mask = get_scalp_mask_for_bald(image)
+
+    mask_dynamic = processs_dynamic_mask(hair_mask, instructions, hair_info)
+    #mask_dynamic = processs_dynamic_mask(mask, instructions)
     
     # Protección del rostro: la máscara NUNCA debe cubrir la cara
-    mask_dynamic = _apply_face_protection(mask_dynamic, image_mediapipe,str(instructions.get("style")))
+    mask_dynamic = _apply_face_protection(mask_dynamic, image_mediapipe,hair_info)    
 
     # Personas calvas o poco cabello: si hay muy poca región de cabello, usar máscara de scalp
-    hair_pixels = np.sum(mask_dynamic > 0)
+    """ hair_pixels = np.sum(mask_dynamic > 0)
     total_pixels = mask_dynamic.shape[0] * mask_dynamic.shape[1]
     if hair_pixels < total_pixels * 0.02 or hair_pixels < 1500:
         scalp_mask = get_scalp_mask_for_bald(image)
@@ -287,7 +308,7 @@ def generate_new_style(image: bytes, prompt: str):
             raise ValueError(
                 "No se detectó región de cabello para editar. Verifica que la imagen muestre claramente "
                 "la cabeza y el rostro de la persona (frontal, buena iluminación)."
-            )
+            ) """
     
     # Convertimos el mural en el "paquete" de un archivo PNG
     exito, buffer = cv2.imencode('.png', mask_dynamic)
@@ -300,9 +321,7 @@ def generate_new_style(image: bytes, prompt: str):
     # grow_mask para transición suave (máx 20). Mayor valor para cabello largo o agregar a calvo.
     style_val = str(instructions.get('style', '')).lower()
     if style_val == 'long':
-        grow_mask_val = 15
-    elif style_val == 'add_hair':
-        grow_mask_val = 18
+        grow_mask_val = 14
     elif style_val == 'bald':
         grow_mask_val = 2
     elif style_val == 'color':
