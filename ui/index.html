@@ -19,11 +19,14 @@
                 <p class="eyebrow">Hair Try On Studio</p>
                 <h1>Design your new look in 3 steps</h1>
                 <p class="hero-copy">
-                   Upload a photo, describe the change, and generate a downloadable preview. The interface is designed to be fast, clear, and easy to use.
+                   Upload a photo, describe the change, and generate a downloadable preview. 
+                </p>
+                <p class="hero-copy">
+                   The interface is designed to be fast, clear, and easy to use.
                 </p>
 
                 <div class="workflow-steps" aria-label="Pasos para usar la herramienta">
-                    <article id="step-upload" class="step-item" aria-live="polite">
+                    <article id="step-upload" class="step-item is-active" aria-live="polite">
                         <span class="step-index">1</span>
                         <div>
                             <p class="step-title">Upload a photo</p>
@@ -44,12 +47,17 @@
                             <p class="step-copy">Compare the original and the result instantly.</p>
                         </div>
                     </article>
-                    <article id="step-option" class="step-item is-active" aria-live="polite">
+                    <article id="step-option" class="step-item" aria-live="polite">
                         <span class="step-index"></span>
                         <div>
                             <p class="step-title">Optional</p>
-                            <p class="step-copy">Use the predefined styles for men and women.</p>
+                            <p class="step-copy">Use the predefined styles for men, women and bald or olny change heir color.</p>
                         </div>
+                        <!-- SVG stroke overlay: the rect is sized to sit flush to the real box edges -->
+                        <svg class="stroke-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                            <!-- class stroke-path uses CSS for stroke, animation, and sizing -->
+                            <rect class="stroke-path" x="1" y="1" width="98" height="98" rx="12" ry="12" />
+                        </svg>
                     </article>
                 </div>
             </section>
@@ -92,6 +100,7 @@
                         <div class="option-head">
                             <label for="option-input" class="field-label">Predefined changes</label>
                         </div>
+                        <!-- <p class="helper-text">Styles</p> -->
 
                         <div class="suggestion-row" aria-label="Seleccionar género y estilo">
 
@@ -99,45 +108,86 @@
                                 <!-- Female styles (6) -->
                                 <button type="button" class="style-card" data-gender="female" data-style="long straight hair, smooth texture, natural shine, well-groomed, realistic lighting, high detail, frontal portrait">
                                     <img src="assets/img/Largo_lacio.png" alt="Rizos Cortos">
-                                    <span>Largo lacio</span>
+                                    <span>Straight length</span>
                                 </button>
 
                                 <button type="button" class="style-card" data-gender="female" data-style="short bob haircut, chin-length, soft texture, slightly layered, natural look, realistic lighting, frontal view">
                                     <img src="assets/img/Mujer_bob_corto.png" alt="Bob Recto">
-                                    <span>Bob Corto</span>
+                                    <span>Short bob</span>
                                 </button>
 
                                 <button type="button" class="style-card" data-gender="female" data-style="medium length curly hair, defined curls, natural volume, healthy texture, realistic lighting, frontal portrait">
                                     <img src="assets/img/mujer_rizado.png" alt="Melena Larga">
-                                    <span>Rizado Medio</span>
+                                    <span>Medium curly</span>
                                 </button>
 
                                 <!-- Male styles (6) -->
                                 <button type="button" class="style-card" data-gender="male" data-style="classic fade haircut, clean fade on sides, short to medium length on top, sharp and neat, realistic lighting, frontal portrait">
                                     <img src="assets/img/masculino.png" alt="Fade Clásico">
-                                    <span>Fade Clásico</span>
+                                    <span>Classic Fade</span>
                                 </button>
 
                                 <button type="button" class="style-card" data-gender="male" data-style="long hair for men, shoulder-length or longer, natural flow, slightly layered, healthy texture, masculine look, realistic lighting, frontal portrait, high detail">
                                     <img src="assets/img/cabello_largo_hombre.png" alt="Pompadour">
-                                    <span>Cabello Largo</span>
+                                    <span>Long hair</span>
                                 </button>
 
                                 <button type="button" class="style-card" data-gender="male" data-style="bald head, fully shaved, even skin tone, sharp facial features">
                                     <img src="assets/img/calvo_hombre.png" alt="Buzz Cut">
-                                    <span>Calvo</span>
+                                    <span>Bald</span>
                                 </button>
 
+                                <!-- Calvos styles -->
+                                <button type="button" class="style-card" data-gender="calvo" data-style="bald head, fully shaved, even skin tone, sharp facial features">
+                                    <img src="assets/img/calvo_hombre.png" alt="Calvo total">
+                                    <span>Bald</span>
+                                </button>
+
+                                <button type="button" class="style-card" data-gender="calvo" data-style="add short long">
+                                    <img src="assets/img/Buzz_cut.png" alt="Buzz Cut">
+                                    <span>Buzz Cut</span>
+                                </button>
+
+                                <button type="button" class="style-card" data-gender="calvo" data-style="add hair long">
+                                    <img src="assets/img/masculino.png" alt="Entrada/Linea de entrada">
+                                    <span>Long</span>
+                                </button>
                             </div>
                             <div class="gender-toggle" role="tablist" aria-label="Seleccionar género">
-                                <button type="button" class="gender-button" data-gender="female" id="btn-female">Mujer</button>
-                                <button type="button" class="gender-button" data-gender="male" id="btn-male">Hombre</button>
+                                <button type="button" class="gender-button" data-gender="female" id="btn-female">Woman</button>
+                                <button type="button" class="gender-button" data-gender="male" id="btn-male">Man</button>
+                                <button type="button" class="gender-button" data-gender="calvo" id="btn-calvos">Bald</button>
+                            </div>
+                            <div class="suggestion-row" aria-label="Seleccionar color de cabello">
+                                <div class="chips-row" style="width:100%;">
+                                        <button type="button" class="color-chip" data-color="#0a1220" data-name="Negro azulado" title="Bluish black">
+                                            <span class="swatch" style="background:#0a1220"></span>
+                                        </button>
+                                        <button type="button" class="color-chip" data-color="#d0a85b" data-name="Rubio mediano" title="Medium blonde">
+                                            <span class="swatch" style="background:#d0a85b"></span>
+                                        </button>
+                                        <button type="button" class="color-chip" data-color="#c2183b" data-name="Rojo cereza" title="Cherry red">
+                                            <span class="swatch" style="background:#c2183b"></span>
+                                        </button>
+                                        <button type="button" class="color-chip" data-color="#4b2e2a" data-name="Chocolate" title="Chocolate brown">
+                                            <span class="swatch" style="background:#4b2e2a"></span>
+                                        </button>
+                                        <button type="button" class="color-chip" data-color="#4b2a4a" data-name="Castaño Violeta Oscuro" title="Dark violet brown">
+                                            <span class="swatch" style="background:#4b2a4a"></span>
+                                        </button>
+                                        <button type="button" class="color-chip" data-color="#f3e0b0" data-name="Rubio Claro" title="Light blonde">
+                                            <span class="swatch" style="background:#f3e0b0"></span>
+                                        </button>
+                                        <button type="button" class="color-chip" data-color="#7a3b24" data-name="Caoba Cobrizo" title="Mahogany copper">
+                                            <span class="swatch" style="background:#7a3b24"></span>
+                                        </button>
+                                </div>
                             </div>
                         </div>
                     </div>
 
                     <!---- <p class="helper-text">Atajo: usa <kbd>Ctrl</kbd> + <kbd>Enter</kbd> para generar rapido.</p> -->
-                    <p class="helper-text">The result will appear on the right and will also be saved in Inputs.</p>
+                    <p class="helper-text">Note: You can try all three options (instructions, images, or just color change). The result will appear on the right.</p>
                 </form>
 
                 <section class="preview-panel" aria-live="polite">
