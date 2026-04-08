@@ -15,6 +15,7 @@ const responseMessage = document.getElementById("response-message");
 const downloadLink = document.getElementById("download-link");
 const dropzone = document.getElementById("dropzone");
 const promptChips = document.querySelectorAll(".prompt-chip");
+const colorChips = document.querySelectorAll(".color-chip");
 const genderButtons = document.querySelectorAll(".gender-button");
 const stylesGrid = document.getElementById("styles-grid");
 
@@ -278,6 +279,33 @@ async function generateResult({ file, prompt, colorHex, colorName } = {}) {
     }
 }
 
+colorChips.forEach((chip) => {
+    chip.addEventListener("click", () => {
+        const name = chip.dataset.name || chip.title || "";
+        const hex = chip.dataset.color || "";
+        selectedColor = { name, hex };
+        colorChips.forEach((c) => c.classList.remove("selected"));
+        chip.classList.add("selected");
+
+        // Map Spanish color names to concise English color words for internal prompt
+        const colorMap = {
+            'Negro azulado': 'bluish black',
+            'Rubio mediano': 'medium blonde',
+            'Rojo cereza': 'cherry red',
+            'Chocolate': 'chocolate brown',
+            'Castaño Violeta Oscuro': 'dark violet brown',
+            'Rubio Claro': 'light blonde',
+            'Caoba Cobrizo': 'mahogany copper'
+        };
+
+        let mapped = colorMap[name] || name.toLowerCase();
+        // Build internal prompt (in English) and send it without showing in the textarea
+        const internalPrompt = `dye my hair ${mapped}`;
+        const file = imageInput.files[0];
+        generateResult({ file, prompt: internalPrompt, colorHex: hex, colorName: name });
+    });
+});
+
 // Gender buttons: show styles for the selected gender
 if (genderButtons && genderButtons.length) {
     genderButtons.forEach((btn) => {
@@ -313,9 +341,15 @@ document.addEventListener('click', (event) => {
     selectedStyle = card.dataset.style || '';
 
     // Set prompt input to the chosen style (user can edit before generating)
-    if (promptInput) {
-        promptInput.value = selectedStyle;
-        updatePromptCounter();
+    // Do NOT show the predefined prompt in the textarea; send it internally
+    // so the user doesn't see it but the request starts immediately.
+    // The user can still manually type a prompt in the textarea if desired.
+    const file = imageInput.files[0];
+    if (selectedStyle && file) {
+        // Fire and forget; UI will be updated by generateResult
+        generateResult({ file, prompt: selectedStyle });
+    } else {
+        // Keep workflow UI in sync when no immediate generation occurs
         syncWorkflow();
     }
 });
